@@ -3,21 +3,33 @@
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BMP085.h>
+#include "BluetoothSerial.h"  //Bluetooth library import
 
 #define SCREEN_WIDTH 128  // OLED display width, in pixels
 #define SCREEN_HEIGHT 64  // OLED display height, in pixels
+#define BUTTON_1_PIN 35
+#define BUTTON_2_PIN 32
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 Adafruit_BMP085 bme;
 
+BluetoothSerial SerialBT;  //create bluetooth instance
+
 TaskHandle_t Task1;
 TaskHandle_t Task2;
 
+
+String temperatureString = "";
+unsigned long previousMillis = 0;  // Stores last time temperature was published
+const long interval = 10000;       // interval at which to publish sensor readings
 // LED pins
 
 void setup() {
   Serial.begin(115200);
+  SerialBT.begin("ESP32");  //Bluetooth device name
+  pinMode(BUTTON_1_PIN, INPUT_PULLUP);
+  pinMode(BUTTON_2_PIN, INPUT_PULLUP);
   if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
     Serial.println(F("SSD1306 allocation failed"));
     for (;;)
@@ -65,11 +77,18 @@ void Task1code(void* pvParameters) {
   Serial.println(xPortGetCoreID());
 
   for (;;) {
-    Serial.print("This is Task 01 High\n in core ");
-    Serial.println(xPortGetCoreID());
-    delay(1000);
-    Serial.print("This is Task 01 Low\n");
-    delay(1000);
+    byte button_1_State = digitalRead(BUTTON_1_PIN);
+    byte button_2_State = digitalRead(BUTTON_2_PIN);
+
+    if (button_1_State == LOW) {
+      Serial.println("Button 1 is pressed");
+    }
+    delay(100);
+
+    if (button_2_State == LOW) {
+      Serial.println("Button 2 is pressed");
+    }
+    delay(100);
   }
 }
 
@@ -94,6 +113,18 @@ void Task2code(void* pvParameters) {
     display.setTextSize(2);
     display.print("C");
     display.display();
+    unsigned long currentMillis = millis();
+    // Send temperature readings
+    if (currentMillis - previousMillis >= interval) {
+      previousMillis = currentMillis;
+      temperatureString =String(bme.readTemperature());
+      SerialBT.println(temperatureString);
+    }
+
+
+
+
+
     delay(1000);
   }
 }
