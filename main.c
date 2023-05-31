@@ -7,24 +7,25 @@
 
 #define SCREEN_WIDTH 128  // OLED display width, in pixels
 #define SCREEN_HEIGHT 64  // OLED display height, in pixels
-#define BUTTON_1_PIN 35
-#define BUTTON_2_PIN 32
+#define BUTTON_1_PIN 35 // Button 1 Pin 35
+#define BUTTON_2_PIN 32 // Button 2 Pin 35
 
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1); //create OLED instance
 
-Adafruit_BMP085 bme;
+Adafruit_BMP085 bme; //create BMP180 instance
 
 BluetoothSerial SerialBT;  //create bluetooth instance
 
-TaskHandle_t Task1;
+// Using for Thread
+TaskHandle_t Task1; 
 TaskHandle_t Task2;
 
-
+//Using for temperature reading
 String temperatureString = "";
 unsigned long previousMillis = 0;  // Stores last time temperature was published
 const long interval = 10000;       // interval at which to publish sensor readings
-// LED pins
 
+//Run at poweron
 void setup() {
   Serial.begin(115200);
   SerialBT.begin("ESP32");  //Bluetooth device name
@@ -36,6 +37,7 @@ void setup() {
       ;
   }
 
+  //BMP180 startup
   bool status = bme.begin(0x77);
   if (!bme.begin()) {
     Serial.println("Could not find a valid BME280 sensor, check wiring!");
@@ -43,6 +45,7 @@ void setup() {
       ;
   }
 
+  //OLED startup config
   delay(2000);
   display.clearDisplay();
   display.setTextColor(WHITE);
@@ -71,7 +74,8 @@ void setup() {
   delay(500);
 }
 
-//Task1code: blinks an LED every 1000 ms
+//Run as loop
+//Task1code:Button & speedmeter(Underdevelopment)
 void Task1code(void* pvParameters) {
   Serial.print("Task1 running on core ");
   Serial.println(xPortGetCoreID());
@@ -92,7 +96,8 @@ void Task1code(void* pvParameters) {
   }
 }
 
-//Task2code: blinks an LED every 700 ms
+//Run as loop
+//Task2code:Display & bluetooth
 void Task2code(void* pvParameters) {
   Serial.print("Task2 running on core ");
   Serial.println(xPortGetCoreID());
@@ -120,10 +125,6 @@ void Task2code(void* pvParameters) {
       temperatureString =String(bme.readTemperature());
       SerialBT.println(temperatureString);
     }
-
-
-
-
 
     delay(1000);
   }
