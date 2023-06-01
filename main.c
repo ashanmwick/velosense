@@ -8,12 +8,19 @@
 #define SCREEN_WIDTH 128  // OLED display width, in pixels
 #define SCREEN_HEIGHT 64  // OLED display height, in pixels
 #define BUTTON_1_PIN 35 // Button 1 Pin 35
-#define BUTTON_2_PIN 32 // Button 2 Pin 35
+#define BUTTON_2_PIN 32 // Button 2 Pin 32
+
+//Button contollers
+struct Button {
+  const uint8_t PIN;
+  bool pressed;
+};
+int menu=1;
+Button button1 = {32,false};
+Button button2 = {35,false};
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1); //create OLED instance
-
 Adafruit_BMP085 bme; //create BMP180 instance
-
 BluetoothSerial SerialBT;  //create bluetooth instance
 
 // Using for Thread
@@ -25,12 +32,28 @@ String temperatureString = "";
 unsigned long previousMillis = 0;  // Stores last time temperature was published
 const long interval = 10000;       // interval at which to publish sensor readings
 
-//Run at poweron
+//intrupt handle function
+void IRAM_ATTR isr() {
+  button1.pressed = true;
+}
+void IRAM_ATTR isr2() {
+  button2.pressed = true;
+}
+
+
+
+
+
+//Run at power On
 void setup() {
   Serial.begin(115200);
   SerialBT.begin("ESP32");  //Bluetooth device name
-  pinMode(BUTTON_1_PIN, INPUT_PULLUP);
-  pinMode(BUTTON_2_PIN, INPUT_PULLUP);
+
+  pinMode(button1.PIN, INPUT_PULLUP);
+  pinMode(button2.PIN, INPUT_PULLUP);
+  attachInterrupt(button1.PIN, isr, FALLING);
+  attachInterrupt(button2.PIN, isr2, FALLING);
+
   if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
     Serial.println(F("SSD1306 allocation failed"));
     for (;;)
@@ -80,20 +103,28 @@ void Task1code(void* pvParameters) {
   Serial.print("Task1 running on core ");
   Serial.println(xPortGetCoreID());
 
-  for (;;) {
-    byte button_1_State = digitalRead(BUTTON_1_PIN);
-    byte button_2_State = digitalRead(BUTTON_2_PIN);
-
-    if (button_1_State == LOW) {
-      Serial.println("Button 1 is pressed");
+  if (button2.pressed) {
+    Serial.println(F("Button 2 Pressed!"));
+    button2.pressed = false;
+    if(menu==0){
+      menu=4;
     }
-    delay(100);
-
-    if (button_2_State == LOW) {
-      Serial.println("Button 2 is pressed");
+    else{
+      menu--;
     }
-    delay(100);
+
   }
+  if (button1.pressed) {
+    Serial.println(F("Button 1 Pressed!"));
+    button1.pressed = false;
+    if(menu==4){
+      menu=0;
+    }
+    else{
+      menu++;
+    }
+  }
+  Serial.println(menu);
 }
 
 //Run as loop
