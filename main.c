@@ -35,7 +35,8 @@ Adafruit_BMP085 bme;  //create BMP180 instance
 
 BluetoothSerial SerialBT;  //create bluetooth instance
 //Max30102 start
-MAX30105 particleSensor;   //create MAX10302 instance
+MAX30105 particleSensor;  //create MAX10302 instance
+
 const byte RATE_SIZE = 4;  //Increase this for more averaging. 4 is good.
 byte rates[RATE_SIZE];     //Array of heart rates
 byte rateSpot = 0;
@@ -115,7 +116,7 @@ void setup() {
   pinMode(button2.PIN, INPUT_PULLUP);
   attachInterrupt(button2.PIN, isr2, FALLING);
 
-  //Hall Effect 
+  //Hall Effect
   pinMode(hall_effect.PIN, INPUT_PULLUP);
   attachInterrupt(hall_effect.PIN, isr3, FALLING);
 
@@ -138,7 +139,7 @@ void setup() {
   if (!particleSensor.begin(Wire, I2C_SPEED_FAST))  //Use default I2C port, 400kHz speed
   {
     Serial.println("MAX30105 was not found. Please check wiring/power. ");
-    maxs = 0;
+    //maxs = 0;
   }
   Serial.println("Place your index finger on the sensor with steady pressure.");
 
@@ -195,15 +196,18 @@ void Task1code(void* pvParameters) {
       hall_effect.pressed = false;
     }
 
-
-
     if (checkForBeat(irValue) == true) {
 
       //We sensed a beat!
       long delta = millis() - lastBeat;
       lastBeat = millis();
 
-      beatsPerMinute = 60 / (delta / 1000.0);
+      if (irValue < 50000) {
+        beatsPerMinute=0;
+      }else{
+        beatsPerMinute = 60 / (delta / 1000.0);
+      }
+      
 
       if (beatsPerMinute < 255 && beatsPerMinute > 20) {
         rates[rateSpot++] = (byte)beatsPerMinute;  //Store this reading in the array
@@ -216,33 +220,22 @@ void Task1code(void* pvParameters) {
         beatAvg /= RATE_SIZE;
       }
     }
+/*
+    if (irValue < 50000) {
+      //Serial.print(" No finger?");
+    } else {
+      //Serial.print("IR=");
+      //Serial.print(irValue);
+      //Serial.print(", BPM=");
+      //Serial.print(beatsPerMinute);
+      //Serial.print(", Avg BPM=");
+      //Serial.print(beatAvg);
+    }
+*/
 
-    //byte button_1_State = digitalRead(BUTTON_1_PIN);
-    //byte button_2_State = digitalRead(BUTTON_2_PIN);
-    //byte halleffect = digitalRead(HALL_EFFECT);  //Hall effect
+    //Serial.println();
 
-    /*if (button_1_State == HIGH) {
-      Serial.println("Button 1 is pressed");
-    }*/
     //delay(100);
-
-    //if (button_2_State == HIGH) {
-    //  Serial.println("Button 2 is pressed");
-    //}
-
-    /*if (halleffect == LOW) {  //Hall effect
-      Serial.println("Hall Effect detected");
-      SerialBT.println("Hall Effect detected");
-    }*/
-    //Serial.print("IR=");
-    //Serial.print(irValue);
-    //Serial.print("\nBPM=");
-    //Serial.print(beatsPerMinute);
-    //Serial.print(", Avg BPM=");
-    //Serial.print(beatAvg);
-    //Serial.print("\n");
-    //delay(100);
-    delay(100);
   }
 }
 
@@ -267,6 +260,8 @@ void Task2code(void* pvParameters) {
     display.write(167);
     display.setTextSize(2);
     display.print("C");
+    display.setCursor(0, 20);
+    display.print(String(beatsPerMinute));
     display.display();
     unsigned long currentMillis = millis();
 
@@ -274,10 +269,10 @@ void Task2code(void* pvParameters) {
     if (currentMillis - previousMillis >= interval) {
       previousMillis = currentMillis;
       temperatureString = String(bme.readTemperature());
-      SerialBT.println(temperatureString);
+      //SerialBT.println(temperatureString);
       //Altitude
       altString = String(bme.readAltitude());
-      SerialBT.println(altString);
+      SerialBT.println(temperatureString+"|"+altString+"|"+beatsPerMinute);
     }
 
     delay(1000);
