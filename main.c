@@ -44,6 +44,41 @@ float beatsPerMinute;
 int beatAvg;
 //Max30102 end
 
+//Sesnor check variables
+int maxs = 1;
+int oled = 1;
+int bmp = 1;
+
+//Hardware Intrupt Button--Start
+struct Button {
+  const uint8_t PIN;
+  uint32_t numberKeyPresses;
+  bool pressed;
+};
+
+Button button1 = { BUTTON_1_PIN, 0, false };
+Button button2 = { BUTTON_2_PIN, 0, false };
+Button hall_effect = { HALL_EFFECT, 0, false };
+
+void IRAM_ATTR isr() {
+  button1.numberKeyPresses++;
+  button1.pressed = true;
+  //Serial.println("Hall Effect detected");
+}
+
+void IRAM_ATTR isr2() {
+  button2.numberKeyPresses++;
+  button2.pressed = true;
+  //Serial.println("Hall Effect detected");
+}
+
+void IRAM_ATTR isr3() {
+  hall_effect.numberKeyPresses++;
+  hall_effect.pressed = true;
+  //Serial.println("Hall Effect detected");
+}
+
+
 
 // Using for Thread
 TaskHandle_t Task1;
@@ -55,25 +90,43 @@ String temperatureString = "";
 unsigned long previousMillis = 0;  // Stores last time temperature was published
 const long interval = 10000;       // interval at which to publish sensor readings
 
-//Run at poweron
+//Hall Effect
+
+
+
+
+//Run at power Up
 void setup() {
   Serial.begin(115200);
   SerialBT.begin("ESP32");  //Bluetooth device name
   pinMode(BUTTON_1_PIN, INPUT_PULLUP);
-  pinMode(BUTTON_2_PIN, INPUT_PULLUP);
-  pinMode(HALL_EFFECT, INPUT_PULLUP);  //Hall effects
+  //pinMode(BUTTON_2_PIN, INPUT_PULLUP);
+  //pinMode(HALL_EFFECT, INPUT_PULLUP);  //Hall effects
+
   if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
     Serial.println(F("SSD1306 allocation failed"));
-    for (;;)
-      ;
+    oled = 0;
   }
+
+  //Button 1&2
+  pinMode(button1.PIN, INPUT_PULLUP);
+  attachInterrupt(button1.PIN, isr, FALLING);
+
+  pinMode(button2.PIN, INPUT_PULLUP);
+  attachInterrupt(button2.PIN, isr2, FALLING);
+
+  //Hall Effect 
+  pinMode(hall_effect.PIN, INPUT_PULLUP);
+  attachInterrupt(hall_effect.PIN, isr3, FALLING);
+
+
+
 
   //BMP180 startup
   bool status = bme.begin(0x77);
   if (!bme.begin()) {
     Serial.println("Could not find a valid BME280 sensor, check wiring!");
-    while (1)
-      ;
+    bmp = 0;
   }
 
   //OLED startup config
@@ -85,8 +138,7 @@ void setup() {
   if (!particleSensor.begin(Wire, I2C_SPEED_FAST))  //Use default I2C port, 400kHz speed
   {
     Serial.println("MAX30105 was not found. Please check wiring/power. ");
-    while (1)
-      ;
+    maxs = 0;
   }
   Serial.println("Place your index finger on the sensor with steady pressure.");
 
@@ -128,6 +180,23 @@ void Task1code(void* pvParameters) {
   for (;;) {
     long irValue = particleSensor.getIR();
 
+    if (button1.pressed) {
+      Serial.printf("Button 1 is pressed");
+      button1.pressed = false;
+    }
+
+    if (button2.pressed) {
+      Serial.printf("Button 2 is pressed");
+      button2.pressed = false;
+    }
+
+    if (hall_effect.pressed) {
+      Serial.printf("Hall effect is detected");
+      hall_effect.pressed = false;
+    }
+
+
+
     if (checkForBeat(irValue) == true) {
 
       //We sensed a beat!
@@ -148,33 +217,31 @@ void Task1code(void* pvParameters) {
       }
     }
 
-    byte button_1_State = digitalRead(BUTTON_1_PIN);
-    byte button_2_State = digitalRead(BUTTON_2_PIN);
-    byte halleffect = digitalRead(HALL_EFFECT);  //Hall effect
+    //byte button_1_State = digitalRead(BUTTON_1_PIN);
+    //byte button_2_State = digitalRead(BUTTON_2_PIN);
+    //byte halleffect = digitalRead(HALL_EFFECT);  //Hall effect
 
-    if (button_1_State == LOW) {
+    /*if (button_1_State == HIGH) {
       Serial.println("Button 1 is pressed");
-    }
-    delay(100);
+    }*/
+    //delay(100);
 
-    if (button_2_State == LOW) {
-      Serial.println("Button 2 is pressed");
-    }
+    //if (button_2_State == HIGH) {
+    //  Serial.println("Button 2 is pressed");
+    //}
 
-    if (halleffect == LOW) {  //Hall effect
+    /*if (halleffect == LOW) {  //Hall effect
       Serial.println("Hall Effect detected");
       SerialBT.println("Hall Effect detected");
-    }
-    Serial.print("IR=");
-    Serial.print(irValue);
-    Serial.print("\nBPM=");
-    Serial.print(beatsPerMinute);
-    Serial.print(", Avg BPM=");
-    Serial.print(beatAvg);
-    Serial.print("\n");
-    delay(100);
-
-
+    }*/
+    //Serial.print("IR=");
+    //Serial.print(irValue);
+    //Serial.print("\nBPM=");
+    //Serial.print(beatsPerMinute);
+    //Serial.print(", Avg BPM=");
+    //Serial.print(beatAvg);
+    //Serial.print("\n");
+    //delay(100);
     delay(100);
   }
 }
@@ -186,8 +253,6 @@ void Task2code(void* pvParameters) {
   Serial.println(xPortGetCoreID());
 
   for (;;) {
-
-
     display.clearDisplay();
     // display temperature on OLED
     display.setTextSize(1);
@@ -214,7 +279,6 @@ void Task2code(void* pvParameters) {
       altString = String(bme.readAltitude());
       SerialBT.println(altString);
     }
-
 
     delay(1000);
   }
