@@ -4,6 +4,7 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BMP085.h>
 #include "BluetoothSerial.h"  //Bluetooth library import
+#include "DHT.h"              //DHT22 library
 
 //MAX10302
 #include "MAX30105.h"
@@ -28,6 +29,9 @@
 #define BUTTON_1_PIN 35   // Button 1 Pin 35
 #define BUTTON_2_PIN 32   // Button 2 Pin 35
 #define HALL_EFFECT 33    //Hall effects
+#define DHTPIN 26         //define DHT22 pin
+
+#define DHTTYPE DHT22  //Define DHT edition in this case 22
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);  //create OLED instance
 
@@ -36,6 +40,9 @@ Adafruit_BMP085 bme;  //create BMP180 instance
 BluetoothSerial SerialBT;  //create bluetooth instance
 //Max30102 start
 MAX30105 particleSensor;  //create MAX10302 instance
+String RcvdCmd;           //Store recived bluetooth Command
+
+DHT dht(DHTPIN, DHTTYPE);  //create dht 22 instance
 
 const byte RATE_SIZE = 4;  //Increase this for more averaging. 4 is good.
 byte rates[RATE_SIZE];     //Array of heart rates
@@ -50,6 +57,17 @@ int maxs = 1;
 int oled = 1;
 int bmp = 1;
 
+//menu position
+int menu_pos = 0;
+
+//bluetooth
+int Blt = 1;
+
+//Time last hall effect sense occured
+double lsthalls = 0;
+float speed = 0;
+
+
 //Hardware Intrupt Button--Start
 struct Button {
   const uint8_t PIN;
@@ -60,6 +78,10 @@ struct Button {
 Button button1 = { BUTTON_1_PIN, 0, false };
 Button button2 = { BUTTON_2_PIN, 0, false };
 Button hall_effect = { HALL_EFFECT, 0, false };
+
+
+
+
 
 void IRAM_ATTR isr() {
   button1.numberKeyPresses++;
@@ -130,6 +152,8 @@ void setup() {
     bmp = 0;
   }
 
+  dht.begin();  //DHT22 begin sendig data
+
   //OLED startup config
   delay(2000);
   display.clearDisplay();
@@ -181,18 +205,31 @@ void Task1code(void* pvParameters) {
   for (;;) {
     long irValue = particleSensor.getIR();
 
+    if (SerialBT.available()) {
+      //int data=SerialBT.read();
+      //RcvdCmd=String(data);
+      Serial.println(SerialBT.read());
+    }
+
     if (button1.pressed) {
-      Serial.printf("Button 1 is pressed");
+      //Serial.printf("Button 1 is pressed");
+      menu_pos++;
       button1.pressed = false;
     }
 
     if (button2.pressed) {
       Serial.printf("Button 2 is pressed");
+      menu_pos--;
       button2.pressed = false;
     }
 
     if (hall_effect.pressed) {
       Serial.printf("Hall effect is detected");
+      lsthalls = millis() - lsthalls;
+      speed = (1000.0 / lsthalls * hall_effect.numberKeyPresses);
+      //Serial.print(speed);
+      //Serial.print(speed);
+      lsthalls = millis();
       hall_effect.pressed = false;
     }
 
@@ -203,11 +240,11 @@ void Task1code(void* pvParameters) {
       lastBeat = millis();
 
       if (irValue < 50000) {
-        beatsPerMinute=0;
-      }else{
+        beatsPerMinute = 0;
+      } else {
         beatsPerMinute = 60 / (delta / 1000.0);
       }
-      
+
 
       if (beatsPerMinute < 255 && beatsPerMinute > 20) {
         rates[rateSpot++] = (byte)beatsPerMinute;  //Store this reading in the array
@@ -220,22 +257,7 @@ void Task1code(void* pvParameters) {
         beatAvg /= RATE_SIZE;
       }
     }
-/*
-    if (irValue < 50000) {
-      //Serial.print(" No finger?");
-    } else {
-      //Serial.print("IR=");
-      //Serial.print(irValue);
-      //Serial.print(", BPM=");
-      //Serial.print(beatsPerMinute);
-      //Serial.print(", Avg BPM=");
-      //Serial.print(beatAvg);
-    }
-*/
-
-    //Serial.println();
-
-    //delay(100);
+    //RcvdCmd = String(SerialBT.read());
   }
 }
 
@@ -246,35 +268,95 @@ void Task2code(void* pvParameters) {
   Serial.println(xPortGetCoreID());
 
   for (;;) {
+    //DHT22 Reading
+    float hum = dht.readHumidity();
+    // Read temperature as Celsius (the default)
+    float temp = dht.readTemperature();
+
+
     display.clearDisplay();
     // display temperature on OLED
     display.setTextSize(1);
     display.setCursor(0, 0);
-    display.print("Temperature: ");
-    display.setTextSize(2);
-    display.setCursor(0, 10);
-    display.print(String(bme.readTemperature()));
-    display.print(" ");
-    display.setTextSize(1);
-    display.cp437(true);
-    display.write(167);
-    display.setTextSize(2);
-    display.print("C");
-    display.setCursor(0, 20);
-    display.print(String(beatsPerMinute));
+    if (menu_pos < 0) {
+      menu_pos = 3;
+    } else if (menu_pos > 3) {
+      menu_pos = 0;
+    }
+
+    switch (menu_pos) {
+      case 0:
+
+        display.print("Temperature: ");
+        display.setTextSize(2);
+        display.setCursor(0, 10);
+        display.print(String(bme.readTemperature()));
+        display.print(" ");
+        display.setTextSize(1);
+        display.cp437(true);
+        display.write(167);
+        display.setTextSize(2);
+        display.print("C");
+        display.setCursor(0, 25);
+        display.setTextSize(2);
+        display.print(RcvdCmd);
+        break;
+      case 1:
+        display.print("HeartRate: ");
+        display.setTextSize(2);
+        display.setCursor(0, 10);
+        display.print(String(bme.readAltitude()));
+        display.print(" ");
+        display.setTextSize(1);
+        display.cp437(true);
+        display.write(167);
+        display.setTextSize(2);
+        display.print("C");
+        break;
+      case 2:
+        display.print("Speed: ");
+        display.setTextSize(2);
+        display.setCursor(0, 10);
+        display.print(String(speed));
+        display.print(" ");
+        display.setTextSize(1);
+        display.cp437(true);
+        display.write(167);
+        display.setTextSize(2);
+        display.print("C");
+        break;
+      case 3:
+        display.print("Env Temp: ");
+        display.setTextSize(2);
+        display.setCursor(0, 10);
+        display.print(String(beatsPerMinute));
+        display.print(" ");
+        display.setTextSize(1);
+        display.cp437(true);
+        display.write(167);
+        display.setTextSize(2);
+        display.print("C");
+        break;
+    }
     display.display();
+
     unsigned long currentMillis = millis();
 
-    // Send temperature readings via bluetooth communication
     if (currentMillis - previousMillis >= interval) {
       previousMillis = currentMillis;
       temperatureString = String(bme.readTemperature());
       //SerialBT.println(temperatureString);
       //Altitude
       altString = String(bme.readAltitude());
-      SerialBT.println(temperatureString+"|"+altString+"|"+beatsPerMinute);
     }
 
+    if (Blt == 0) {
+      if (Serial.available()) {
+        SerialBT.println(temperatureString + "|" + altString + "|" + beatsPerMinute + "|" + hum + "|" + temp + "|" + speed);
+      }
+    }
+
+    // Send temperature readings via bluetooth communication
     delay(1000);
   }
 }
