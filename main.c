@@ -61,7 +61,7 @@ int bmp = 1;
 int menu_pos = 0;
 
 //bluetooth
-int Blt = 1;
+int Blt = 0;
 
 //Time last hall effect sense occured
 double lsthalls = 0;
