@@ -348,12 +348,7 @@ void Task2code(void* pvParameters) {
       //SerialBT.println(temperatureString);
       //Altitude
       altString = String(bme.readAltitude());
-    }
-
-    if (Blt == 0) {
-      if (Serial.available()) {
-        SerialBT.println(temperatureString + "|" + altString + "|" + beatsPerMinute + "|" + hum + "|" + temp + "|" + speed);
-      }
+      SerialBT.println(temperatureString + "|" + altString + "|" + beatsPerMinute + "|" + hum + "|" + temp + "|" + speed);
     }
 
     // Send temperature readings via bluetooth communication
