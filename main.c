@@ -1,10 +1,10 @@
-#include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BMP085.h>
-#include "BluetoothSerial.h"  //Bluetooth library import
-#include "DHT.h"              //DHT22 library
+#include <Wire.h>//I2C communication
+#include <Adafruit_GFX.h>//OLED screen
+#include <Adafruit_SSD1306.h>////OLED screen
+#include <Adafruit_Sensor.h>//BMP180
+#include <Adafruit_BMP085.h>//BMP180
+#include "BluetoothSerial.h" //Bluetooth library import
+#include "DHT.h"//DHT22 library
 
 //MAX10302
 #include "MAX30105.h"
@@ -40,6 +40,7 @@ Adafruit_BMP085 bme;  //create BMP180 instance
 BluetoothSerial SerialBT;  //create bluetooth instance
 //Max30102 start
 MAX30105 particleSensor;  //create MAX10302 instance
+
 String RcvdCmd;           //Store recived bluetooth Command
 
 DHT dht(DHTPIN, DHTTYPE);  //create dht 22 instance
@@ -82,7 +83,7 @@ Button hall_effect = { HALL_EFFECT, 0, false };
 
 
 
-
+//Hardware Intruption
 void IRAM_ATTR isr() {
   button1.numberKeyPresses++;
   button1.pressed = true;
@@ -122,7 +123,7 @@ const long interval = 10000;       // interval at which to publish sensor readin
 void setup() {
   Serial.begin(115200);
   SerialBT.begin("ESP32");  //Bluetooth device name
-  pinMode(BUTTON_1_PIN, INPUT_PULLUP);
+  //pinMode(BUTTON_1_PIN, INPUT_PULLUP);
   //pinMode(BUTTON_2_PIN, INPUT_PULLUP);
   //pinMode(HALL_EFFECT, INPUT_PULLUP);  //Hall effects
 
@@ -197,7 +198,7 @@ void setup() {
 }
 
 //Run as loop
-//Task1code:Button & speedmeter(Underdevelopment)
+//Task1code:Button,heartrate & speedmeter(Underdevelopment)
 void Task1code(void* pvParameters) {
   Serial.print("Task1 running on core ");
   Serial.println(xPortGetCoreID());
@@ -286,7 +287,6 @@ void Task2code(void* pvParameters) {
 
     switch (menu_pos) {
       case 0:
-
         display.print("Temperature: ");
         display.setTextSize(2);
         display.setCursor(0, 10);
