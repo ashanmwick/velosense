@@ -59,13 +59,14 @@ int oled = 1;
 int bmp = 1;
 
 //menu position
-int menu_pos = 0;
+int menu_pos = 2;
 
 //bluetooth
 int Blt = 0;
 
 //Time last hall effect sense occured
 double lsthalls = 0;
+double time_gap = 0;
 float speed = 0;
 
 
@@ -87,6 +88,8 @@ Button hall_effect = { HALL_EFFECT, 0, false };
 void IRAM_ATTR isr() {
   button1.numberKeyPresses++;
   button1.pressed = true;
+  menu_pos++;
+  button1.pressed = false;
   //Serial.println("Hall Effect detected");
 }
 
@@ -94,10 +97,15 @@ void IRAM_ATTR isr2() {
   button2.numberKeyPresses++;
   button2.pressed = true;
   //Serial.println("Hall Effect detected");
+  menu_pos--;
+  button1.pressed = false;
 }
 
 void IRAM_ATTR isr3() {
-  hall_effect.numberKeyPresses++;
+  //hall_effect.numberKeyPresses++;
+  time_gap=millis()-lsthalls;
+  lsthalls=millis();
+  speed=(1000.0 / time_gap);
   hall_effect.pressed = true;
   //Serial.println("Hall Effect detected");
 }
@@ -131,6 +139,10 @@ void setup() {
     Serial.println(F("SSD1306 allocation failed"));
     oled = 0;
   }
+  //OLED startup config
+  //delay(2000);
+  display.clearDisplay();
+  display.setTextColor(WHITE);
 
   //Button 1&2
   pinMode(button1.PIN, INPUT_PULLUP);
@@ -155,10 +167,8 @@ void setup() {
 
   dht.begin();  //DHT22 begin sendig data
 
-  //OLED startup config
-  delay(2000);
-  display.clearDisplay();
-  display.setTextColor(WHITE);
+
+  //display.clearDisplay();
 
   // Initialize MAX30102
   if (!particleSensor.begin(Wire, I2C_SPEED_FAST))  //Use default I2C port, 400kHz speed
@@ -212,28 +222,13 @@ void Task1code(void* pvParameters) {
       Serial.println(SerialBT.read());
     }
 
-    if (button1.pressed) {
-      //Serial.printf("Button 1 is pressed");
-      menu_pos++;
-      button1.pressed = false;
-    }
-
-    if (button2.pressed) {
-      Serial.printf("Button 2 is pressed");
-      menu_pos--;
-      button2.pressed = false;
-    }
-
+    //Speed Calculation
+  
     if (hall_effect.pressed) {
-      Serial.printf("Hall effect is detected");
-      lsthalls = millis() - lsthalls;
-      speed = (1000.0 / lsthalls * hall_effect.numberKeyPresses);
-      //Serial.print(speed);
-      //Serial.print(speed);
-      lsthalls = millis();
+      Serial.println(speed);
       hall_effect.pressed = false;
     }
-
+/*
     if (checkForBeat(irValue) == true) {
 
       //We sensed a beat!
@@ -257,7 +252,7 @@ void Task1code(void* pvParameters) {
           beatAvg += rates[x];
         beatAvg /= RATE_SIZE;
       }
-    }
+    }*/
     //RcvdCmd = String(SerialBT.read());
   }
 }
@@ -267,7 +262,16 @@ void Task1code(void* pvParameters) {
 void Task2code(void* pvParameters) {
   Serial.print("Task2 running on core ");
   Serial.println(xPortGetCoreID());
-
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor(0, 0);
+  display.print("Welcome");
+  //display.setCursor(2, 0);
+  //display.print("Velo Sense");
+  display.setCursor(4, 0);
+  display.print("Loading Please Wait");
+  display.display();
+  delay(5000);
   for (;;) {
     //DHT22 Reading
     float hum = dht.readHumidity();
@@ -299,31 +303,22 @@ void Task2code(void* pvParameters) {
         display.print("C");
         display.setCursor(0, 25);
         display.setTextSize(2);
-        display.print(RcvdCmd);
+        //display.print(RcvdCmd);
         break;
       case 1:
-        display.print("HeartRate: ");
+        display.print("Altitude: ");
         display.setTextSize(2);
         display.setCursor(0, 10);
         display.print(String(bme.readAltitude()));
-        display.print(" ");
-        display.setTextSize(1);
-        display.cp437(true);
-        display.write(167);
-        display.setTextSize(2);
-        display.print("C");
+        display.print("m");
         break;
       case 2:
         display.print("Speed: ");
         display.setTextSize(2);
         display.setCursor(0, 10);
         display.print(String(speed));
-        display.print(" ");
-        display.setTextSize(1);
-        display.cp437(true);
-        display.write(167);
         display.setTextSize(2);
-        display.print("C");
+        display.print("m/s");
         break;
       case 3:
         display.print("Env Temp: ");
@@ -349,6 +344,7 @@ void Task2code(void* pvParameters) {
       //Altitude
       altString = String(bme.readAltitude());
       SerialBT.println(temperatureString + "|" + altString + "|" + beatsPerMinute + "|" + hum + "|" + temp + "|" + speed);
+      speed=0;
     }
 
     // Send temperature readings via bluetooth communication
