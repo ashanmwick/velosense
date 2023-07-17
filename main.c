@@ -1,10 +1,10 @@
-#include <Wire.h>//I2C communication
-#include <Adafruit_GFX.h>//OLED screen
-#include <Adafruit_SSD1306.h>////OLED screen
-#include <Adafruit_Sensor.h>//BMP180
-#include <Adafruit_BMP085.h>//BMP180
-#include "BluetoothSerial.h" //Bluetooth library import
-#include "DHT.h"//DHT22 library
+#include <Wire.h>              //I2C communication
+#include <Adafruit_GFX.h>      //OLED screen
+#include <Adafruit_SSD1306.h>  ////OLED screen
+#include <Adafruit_Sensor.h>   //BMP180
+#include <Adafruit_BMP085.h>   //BMP180
+#include "BluetoothSerial.h"   //Bluetooth library import
+#include "DHT.h"               //DHT22 library
 
 //MAX10302
 #include "MAX30105.h"
@@ -104,10 +104,10 @@ const unsigned char logoMischianti[1024] PROGMEM = {
 
 //Timer starts here
 double start_time;
-double diff_ms_time=0;
-int minute_time=0;
-int seco_time=0;
-int hrs_time=0;
+double diff_ms_time = 0;
+int minute_time = 0;
+int seco_time = 0;
+int hrs_time = 0;
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);  //create OLED instance
 
@@ -117,7 +117,7 @@ BluetoothSerial SerialBT;  //create bluetooth instance
 //Max30102 start
 MAX30105 particleSensor;  //create MAX10302 instance
 
-String RcvdCmd;           //Store recived bluetooth Command
+String RcvdCmd;  //Store recived bluetooth Command
 
 DHT dht(DHTPIN, DHTTYPE);  //create dht 22 instance
 
@@ -180,11 +180,11 @@ void IRAM_ATTR isr2() {
 
 void IRAM_ATTR isr3() {
   //hall_effect.numberKeyPresses++;
-  time_gap=millis()-lsthalls;
-  lsthalls=millis();
-  speed=(1000.0 / time_gap);
+  time_gap = millis() - lsthalls;
+  lsthalls = millis();
+  speed = (1000.0 / time_gap);
   hall_effect.pressed = true;
-  speed_val=(2*3.14*0.15*speed)*3.6;
+  speed_val = (2 * 3.14 * 0.15 * speed) * 3.6;
   //Serial.println("Hall Effect detected");
 }
 
@@ -286,33 +286,18 @@ void setup() {
 }
 
 //Run as loop
-//Task1code:Button,heartrate & speedmeter(Underdevelopment)
+//Task1code:Button,heartrate & speedmeter
 void Task1code(void* pvParameters) {
   Serial.print("Task1 running on core ");
   Serial.println(xPortGetCoreID());
 
   for (;;) {
     long irValue = particleSensor.getIR();
-
-    if (SerialBT.available()) {
-      //int data=SerialBT.read();
-      //RcvdCmd=String(data);
-      Serial.println(SerialBT.read());
-    }
-
-/*
     if (checkForBeat(irValue) == true) {
-
       //We sensed a beat!
       long delta = millis() - lastBeat;
       lastBeat = millis();
-
-      if (irValue < 50000) {
-        beatsPerMinute = 0;
-      } else {
-        beatsPerMinute = 60 / (delta / 1000.0);
-      }
-
+      beatsPerMinute = 60 / (delta / 1000.0);
 
       if (beatsPerMinute < 255 && beatsPerMinute > 20) {
         rates[rateSpot++] = (byte)beatsPerMinute;  //Store this reading in the array
@@ -324,8 +309,19 @@ void Task1code(void* pvParameters) {
           beatAvg += rates[x];
         beatAvg /= RATE_SIZE;
       }
-    }*/
-    //RcvdCmd = String(SerialBT.read());
+    }
+
+    Serial.print("IR=");
+    Serial.print(irValue);
+    Serial.print(", BPM=");
+    Serial.print(beatsPerMinute);
+    Serial.print(", Avg BPM=");
+    Serial.print(beatAvg);
+
+    if (irValue < 50000)
+      Serial.print(" No finger?");
+
+    Serial.println();
   }
 }
 
@@ -348,9 +344,9 @@ void Task2code(void* pvParameters) {
   display.print("Loading Please Wait");
   display.display();
   */
-  //delay(5000);
+  delay(5000);
 
-  start_time=millis();//Timer get start Time
+  start_time = millis();  //Timer get start Time
 
   for (;;) {
     //DHT22 Reading
@@ -362,21 +358,21 @@ void Task2code(void* pvParameters) {
     display.clearDisplay();
     // display temperature on OLED
     //Timer Dsplay
-    seco_time=(millis()-start_time)/1000;
-    if(seco_time>=60){
-      minute_time=seco_time/60;
-      seco_time=seco_time%60;
-      if(minute_time>=60){
-        hrs_time=minute_time/60;
-        minute_time=minute_time%60;
-      }else{
-        hrs_time=0;
+    seco_time = (millis() - start_time) / 1000;
+    if (seco_time >= 60) {
+      minute_time = seco_time / 60;
+      seco_time = seco_time % 60;
+      if (minute_time >= 60) {
+        hrs_time = minute_time / 60;
+        minute_time = minute_time % 60;
+      } else {
+        hrs_time = 0;
       }
-    }else{
-      minute_time=0;
-      hrs_time=0;
+    } else {
+      minute_time = 0;
+      hrs_time = 0;
     }
-    
+
 
 
 
@@ -432,13 +428,13 @@ void Task2code(void* pvParameters) {
         display.print("C");
         break;
     }
-    
-    
-    if(minute_time>=1){
+
+
+    if (minute_time >= 1) {
       display.setCursor(15, 50);
-      display.print(String(hrs_time)+":"+String(minute_time)+":"+String(seco_time));
-      
-    }else{
+      display.print(String(hrs_time) + ":" + String(minute_time) + ":" + String(seco_time));
+
+    } else {
       display.setCursor(10, 30);
       display.setTextSize(1);
       display.print(String("Waiting to Start"));
@@ -446,7 +442,7 @@ void Task2code(void* pvParameters) {
       display.print(String("the Session!"));
     }
     //display.println(" ");
-    Serial.println(String(display.getCursorX())+" "+String(display.getCursorY()));
+    Serial.println(String(display.getCursorX()) + " " + String(display.getCursorY()));
     display.display();
 
     unsigned long currentMillis = millis();
@@ -457,9 +453,9 @@ void Task2code(void* pvParameters) {
       //SerialBT.println(temperatureString);
       //Altitude
       altString = String(bme.readAltitude());
-      SerialBT.println(temperatureString + "|" + altString + "|" + beatsPerMinute + "|" + hum + "|" + temp + "|" + speed);
-      speed=0;
-      speed_val=0;
+      SerialBT.println(temperatureString + "|" + altString + "|" + beatAvg + "|" + hum + "|" + temp + "|" + speed);
+      speed = 0;
+      speed_val = 0;
     }
 
     // Send temperature readings via bluetooth communication
