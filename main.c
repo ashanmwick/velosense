@@ -92,7 +92,7 @@ const unsigned char logoMischianti[1024] PROGMEM = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-
+//Macros
 #define SCREEN_WIDTH 128  // OLED display width, in pixels
 #define SCREEN_HEIGHT 64  // OLED display height, in pixels
 #define BUTTON_1_PIN 35   // Button 1 Pin 35
@@ -149,9 +149,9 @@ float speed_val = 0;
 
 //Hardware Intrupt Button--Start
 struct Button {
-  const uint8_t PIN;
-  uint32_t numberKeyPresses;
-  bool pressed;
+  const uint8_t PIN;//uint8_t should check
+  uint32_t numberKeyPresses;//Not used
+  bool pressed;//Not used
 };
 
 Button button1 = { BUTTON_1_PIN, 0, false };
@@ -162,29 +162,29 @@ Button hall_effect = { HALL_EFFECT, 0, false };
 
 
 //Hardware Intruption
-void IRAM_ATTR isr() {
-  button1.numberKeyPresses++;
-  button1.pressed = true;
+void IRAM_ATTR isr() {//Button1
+  //button1.numberKeyPresses++;
+  //button1.pressed = true;
   menu_pos++;
-  button1.pressed = false;
+  //button1.pressed = false;
   //Serial.println("Hall Effect detected");
 }
 
-void IRAM_ATTR isr2() {
-  button2.numberKeyPresses++;
-  button2.pressed = true;
+void IRAM_ATTR isr2() {//Button2
+  //button2.numberKeyPresses++;
+  //button2.pressed = true;
   //Serial.println("Hall Effect detected");
   menu_pos--;
-  button1.pressed = false;
+  //button1.pressed = false;
 }
 
-void IRAM_ATTR isr3() {
+void IRAM_ATTR isr3() {//Hall Effect Sensor
   //hall_effect.numberKeyPresses++;
   time_gap = millis() - lsthalls;
   lsthalls = millis();
   speed = (1000.0 / time_gap);
   hall_effect.pressed = true;
-  speed_val = (2 * 3.14 * 0.15 * speed) * 3.6;
+  speed_val = (2 * 3.14 * 0.15 * speed) * 3.6;//r=0.15 
   //Serial.println("Hall Effect detected");
 }
 
@@ -200,10 +200,6 @@ String temperatureString = "";
 unsigned long previousMillis = 0;  // Stores last time temperature was published
 const long interval = 10000;       // interval at which to publish sensor readings
 
-//Hall Effect
-
-
-
 
 //Run at power Up
 void setup() {
@@ -213,9 +209,8 @@ void setup() {
   //pinMode(BUTTON_2_PIN, INPUT_PULLUP);
   //pinMode(HALL_EFFECT, INPUT_PULLUP);  //Hall effects
 
-  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {//0x3C is oled address
     Serial.println(F("SSD1306 allocation failed"));
-    oled = 0;
   }
   //OLED startup config
   //delay(2000);
@@ -223,24 +218,22 @@ void setup() {
 
 
   //Button 1&2
-  pinMode(button1.PIN, INPUT_PULLUP);
-  attachInterrupt(button1.PIN, isr, FALLING);
+  pinMode(button1.PIN, INPUT_PULLUP);//Get pin inputs
+  attachInterrupt(button1.PIN, isr, FALLING);//Faling refers to Voltage Falling
 
-  pinMode(button2.PIN, INPUT_PULLUP);
-  attachInterrupt(button2.PIN, isr2, FALLING);
+  pinMode(button2.PIN, INPUT_PULLUP);//Get pin inputs
+  attachInterrupt(button2.PIN, isr2, FALLING);//Faling refers to Voltage Falling
 
   //Hall Effect
-  pinMode(hall_effect.PIN, INPUT_PULLUP);
-  attachInterrupt(hall_effect.PIN, isr3, FALLING);
-
-
+  pinMode(hall_effect.PIN, INPUT_PULLUP);//Get pin inputs
+  attachInterrupt(hall_effect.PIN, isr3, FALLING);//Faling refers to Voltage Falling
 
 
   //BMP180 startup
-  bool status = bme.begin(0x77);
+  bool status = bme.begin(0x77);//I2C address 0x77
   if (!bme.begin()) {
     Serial.println("Could not find a valid BME280 sensor, check wiring!");
-    bmp = 0;
+    //bmp = 0;
   }
 
   dht.begin();  //DHT22 begin sendig data
@@ -285,16 +278,16 @@ void setup() {
   delay(500);
 }
 
-//Run as loop
-//Task1code:Button,heartrate & speedmeter
+
+//Task1code:heartrate
 void Task1code(void* pvParameters) {
   Serial.print("Task1 running on core ");
   Serial.println(xPortGetCoreID());
 
-  for (;;) {
+  for (;;) {//Run as loop
     long irValue = particleSensor.getIR();
     if (checkForBeat(irValue) == true) {
-      //We sensed a beat!
+
       long delta = millis() - lastBeat;
       lastBeat = millis();
       beatsPerMinute = 60 / (delta / 1000.0);
@@ -311,17 +304,7 @@ void Task1code(void* pvParameters) {
       }
     }
 
-    Serial.print("IR=");
-    Serial.print(irValue);
-    Serial.print(", BPM=");
-    Serial.print(beatsPerMinute);
-    Serial.print(", Avg BPM=");
-    Serial.print(beatAvg);
 
-    if (irValue < 50000)
-      Serial.print(" No finger?");
-
-    Serial.println();
   }
 }
 
@@ -330,6 +313,7 @@ void Task1code(void* pvParameters) {
 void Task2code(void* pvParameters) {
   Serial.print("Task2 running on core ");
   Serial.println(xPortGetCoreID());
+
   display.drawBitmap(0, 0, logoMischianti, 128, 64, WHITE);
   display.display();
   display.setTextColor(WHITE);
@@ -352,7 +336,7 @@ void Task2code(void* pvParameters) {
     //DHT22 Reading
     float hum = dht.readHumidity();
     // Read temperature as Celsius (the default)
-    float temp = dht.readTemperature();
+    float temp = bme.readTemperature();
 
 
     display.clearDisplay();
