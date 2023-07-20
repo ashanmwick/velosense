@@ -338,7 +338,6 @@ void Task2code(void* pvParameters) {
     // Read temperature as Celsius (the default)
     float temp = bme.readTemperature();
 
-
     display.clearDisplay();
     // display temperature on OLED
     //Timer Dsplay
